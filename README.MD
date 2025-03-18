@@ -1,95 +1,145 @@
-# Debt Processing Pipeline System
+# Sistema de Pipeline de Processamento de Dívidas  
 
-## Language Selection
-- [English](#english)
-- [Português](#portugues)
+O Sistema de Pipeline de Processamento de Dívidas é um sistema abrangente projetado para processar dados de dívida enviados por clientes por meio de vários métodos. O pipeline gerencia a submissão, armazenamento, transformação e processamento final dos dados para garantir que as informações da dívida sejam registradas e rastreadas com precisão do início ao fim, de forma assíncrona, permitindo que o operador do sistema dimensione os componentes do sistema de acordo com a demanda variável ao longo do dia.
 
-## English Version {#english}
+## Justificativa  
+Esta empresa é um bureau de cobrança de dívidas.  
 
-<section id="english">
+Seus clientes são empresas que desejam cobrar dívidas vencidas de indivíduos que não efetuaram o pagamento voluntariamente. Os clientes enviam as informações de cobrança da dívida, que incluem detalhes básicos sobre o devedor do qual desejam cobrar, como nome, CPF (Cadastro de Pessoas Físicas), valor devido e data do vencimento não pago. Assim que a dívida é registrada no sistema do bureau de cobrança, as dívidas serão protestadas, o devedor será notificado e um desconto ou plano de parcelamento poderá ser negociado.
 
-### Overview
-The Debt Processing Pipeline is a comprehensive system designed to process debt data submitted by clients through various methods. It handles data submission, storage, transformation, and final processing to ensure accurate recording and tracking of debt information in an asynchronous manner. This allows for scalable system operations based on variable demand.
+## Escopo  
+Esta descrição do sistema não abordará a fase de cobrança da dívida, mas, para fins de delimitação deste escopo, será restrita apenas ao recebimento, processamento e armazenamento dos dados de dívida enviados pelos clientes ao bureau. A complexidade se deve à multiplicidade de formatos de dados e arquivos que os clientes podem utilizar, e como o sistema deve reagir para ingerir esses dados de maneira fluida e precisa, atendendo tanto pequenos quanto grandes clientes, garantindo precisão e agilidade.
 
-### Reasoning
-The company is a debt collection bureau that helps businesses collect overdue debts. Clients submit debt collection information, including debtor details, CPF (individual taxpayer registry number), amount owed, and due date. Once the debt is registered, further actions such as protests, notifications, discounts, or installment plans may follow.
+## Componentes do Sistema  
 
-### Scope
-This system focuses on receiving, processing, and storing debt data submitted by clients. It does not cover the debt collection phase. The complexity arises from handling multiple data and file formats, ensuring smooth ingestion for both small and large clients with precision and efficiency.
+### Serviço de Lotes  
+O serviço de lotes é utilizado para rastrear e manter o status das solicitações de dados de dívida que os clientes enviam ao bureau.
 
-### System Components
+### Serviços de Entrada  
+Utilizados como serviços de borda, esses componentes são expostos ao cliente para coletar, de forma passiva ou ativa, os dados de dívida. Esses serviços respondem de maneira síncrona, recebendo a entrada e armazenando os dados brutos para processamento intermediário.
 
-#### Batch Service
-Tracks and maintains the status of debt data requests submitted by clients.
+### Processo de Captura de Arquivos  
+No caso de arquivos entregues via FTP, um evento na notificação S3 será acionado para a SQS. Em seguida, o processo de captura de arquivos verificará o arquivo, identificará os detalhes do cliente e, a partir daí, poderá dividir um arquivo grande em vários sublotes ou registrar um único lote para o processo intermediário.
 
-#### Input Services
-Border services exposed to clients to collect debt data passively or actively, storing raw data for intermediate processing.
+### Processo Intermediário  
+Este serviço processa os dados brutos coletados por diversas fontes na fase de entrada, realiza ETL, prepara os dados e os injeta em um banco DynamoDB que será utilizado para o processo de registro.
 
-#### File Picker Process
-- Detects file submissions via FTP using S3 notifications to SQS.
-- Validates file details and client identity.
-- Splits large files into multiple sub-batches or registers single batches for processing.
+### Processo de Registro  
+Extrai os dados do armazenamento temporário no DynamoDB, processa esses dados de acordo com diversas validações exigidas e os insere no sistema de armazenamento de dívidas.
 
-#### Intermediate Process
-- Gathers raw data from various input sources.
-- Performs ETL operations.
-- Prepares and injects data into DynamoDB for registration.
+### Broker de Mensagens  
+Para este modelo, utilizamos o Amazon SNS para retransmissão básica de mensagens entre processos, sinalizando para diferentes componentes, como o serviço de lotes, que há um novo arquivo a ser processado pelo sistema intermediário, ou que o serviço de lotes precisa atualizar o status do lote.
 
-#### Registering Process
-- Takes data from DynamoDB.
-- Validates and processes debt data.
-- Inputs finalized data into the debt storage system.
+### Monitoramento  
+Todos os processos emitem métricas de séries temporais para o AWS Timestream para análise posterior.
 
-#### Message Broker
-- Uses Amazon SNS for inter-process messaging.
-- Notifies batch service and intermediate systems of new files.
+## Serviço de Processamento de Lotes  
 
-#### Monitoring
-- All processes emit time-series metrics to AWS Timestream for analysis.
+O Serviço de Processamento de Lotes é responsável por gerenciar o status das submissões dos clientes e rastrear seu progresso nas várias etapas do pipeline de processamento de dívidas. Este serviço garante que os dados sejam tratados, processados e armazenados corretamente no sistema.
 
-</section>
+### Responsabilidades Principais do Serviço de Processamento de Lotes  
 
-## Versão em Português {#portugues}
+#### Criação de Lotes  
+- Invocado por uma chamada síncrona das etapas de entrada, contém informações básicas de processamento do lote, incluindo status, localização do arquivo, identificação do cliente, número do lote, número de dívidas recebidas, processadas e falhas.  
+- Assim que um lote é criado, uma mensagem é enviada para a fila do processo intermediário.
 
-<section id="portugues">
+#### Rastreamento e Atualizações de Status  
+- O Serviço de Processamento de Lotes mantém o status do lote ao longo de todo o pipeline.
 
-### Visão Geral
-O Pipeline de Processamento de Dívidas é um sistema abrangente projetado para processar dados de dívida enviados por clientes por vários métodos. Ele lida com a submissão, armazenamento, transformação e processamento final dos dados para garantir o registro e rastreamento precisos das informações de dívida de forma assíncrona. Isso permite operações escaláveis do sistema com base na demanda variável.
+#### Conclusão do Lote  
+- Após a conclusão do processo de registro, o status do lote é finalizado e atualizado.  
+- O lote enviará mensagens para o destino que precisa ser notificado sobre os resultados, seja por SES para e-mail ou Event Bridge para webhook ou outros métodos.
 
-### Justificativa
-A empresa é um bureau de cobrança que auxilia empresas na recuperação de dívidas vencidas. Os clientes enviam informações de cobrança, incluindo detalhes do devedor, CPF (Cadastro de Pessoa Física), valor devido e data de vencimento. Uma vez registrada a dívida, outras ações, como protestos, notificações, descontos ou planos de parcelamento, podem ser realizadas.
+#### Notificação de Falha  
+- Em caso de falha no processamento da entrada, como formato inválido, assim que a mensagem for recebida pelo serviço, esta será enviada ao cliente por meio do SES ou Event Bridge.
 
-### Escopo
-Este sistema se concentra no recebimento, processamento e armazenamento dos dados de dívida enviados pelos clientes. Ele não cobre a fase de cobrança da dívida. A complexidade surge da necessidade de lidar com vários formatos de dados e arquivos, garantindo uma ingestão suave e eficiente tanto para clientes pequenos quanto grandes.
+## Fase de Entrada  
 
-### Componentes do Sistema
+A Fase de Entrada é responsável por receber, armazenar e registrar os dados enviados pelos clientes em diferentes formatos. Os clientes podem submeter dados por upload de arquivos ou por meio de requisições REST individuais.
 
-#### Serviço de Lotes
-Rastreia e mantém o status das solicitações de dados de dívida enviadas pelos clientes.
+### 1 - Submissão de Dados via REST API usando Formato Padrão  
+**Público-alvo:** Para clientes que desejam utilizar o formato padrão, sejam eles pequenos ou grandes.  
+**Requisitos:** Os dados devem estar em um formato definido.  
+**Operação:**  
+- O cliente enviará várias linhas de dívida via chamadas REST.  
+- Os dados são gravados em um banco de dados NoSQL temporário.  
+- Após a finalização, o cliente invocará uma solicitação de submissão e os dados serão gravados em um CSV no S3.  
+**Próximo passo:**  
+- Uma mensagem é enviada ao serviço de lotes para criar o lote e posteriormente enviá-lo para a fila do processo intermediário.
 
-#### Serviços de Entrada
-Serviços de fronteira expostos aos clientes para coletar dados de dívida de forma passiva ou ativa, armazenando dados brutos para processamento intermediário.
+### 2 - Submissão de Dados via REST API para CSV  
+**Público-alvo:** Para clientes que desejam utilizar o formato padrão, sejam eles pequenos ou grandes.  
+**Requisitos:** Os dados devem estar em um formato definido.  
+**Operação:**  
+- O cliente enviará um único arquivo CSV via chamada REST.  
+- O CSV é armazenado no S3.  
+**Próximo passo:**  
+- Uma mensagem é enviada ao serviço de lotes para criar o lote e enviá-lo ao processo intermediário.
 
-#### Processo de Seleção de Arquivos
-- Detecta submissões de arquivos via FTP usando notificações do S3 para o SQS.
-- Valida detalhes do arquivo e identidade do cliente.
-- Divide arquivos grandes em vários sub-lotes ou registra lotes únicos para processamento.
+### 3 - Submissão de Arquivos via FTP  
+**Público-alvo:** Para clientes que enviam arquivos de tamanho variável.  
+**Operação:**  
+- Os clientes enviam arquivos para o S3 via FTP em diversos formatos, seja padrão ou personalizado.  
+**Próximo passo:**  
+- A notificação de evento S3 envia uma mensagem para a fila SQS do serviço de captura de arquivos.
 
-#### Processo Intermediário
-- Coleta dados brutos de várias fontes de entrada.
-- Realiza operações de ETL.
-- Prepara e injeta os dados no DynamoDB para registro.
+### 4 – Formato Personalizado para Pequenos Clientes  
+**Público-alvo:** Pequenos clientes com poucas dívidas.  
+**Operação:**  
+- O cliente faz o upload de um arquivo (CSV, TXT, XLS) via portal web.  
+- As primeiras 100 colunas são analisadas, e o usuário mapeia os campos.  
+- O arquivo é gravado no S3.  
+**Próximo passo:**  
+- Uma mensagem é enviada ao serviço de lotes para criação do lote e envio ao processo intermediário.
 
-#### Processo de Registro
-- Obtém dados do DynamoDB.
-- Valida e processa os dados da dívida.
-- Insere os dados finalizados no sistema de armazenamento de dívidas.
+## Serviço de Captura de Arquivos  
 
-#### Corretor de Mensagens
-- Usa Amazon SNS para mensagens interprocessuais.
-- Notifica o serviço de lotes e sistemas intermediários sobre novos arquivos.
+### Entrada  
+- Monitora a fila SQS do serviço de captura de arquivos.  
 
-#### Monitoramento
-- Todos os processos emitem métricas de séries temporais para o AWS Timestream para análise.
+### Operação  
+- Executa em paralelo com múltiplas réplicas.  
+- Verifica arquivos corrompidos e informações do cliente.  
+- Divide arquivos grandes em sublotes, se necessário.  
+**Próximo passo:**  
+- Envia mensagens para o serviço de lotes e para a fila do processo intermediário.  
 
-</section>
+## Serviço Intermediário  
+
+### Entrada  
+- Monitora a fila SQS intermediária.  
+
+### Operação  
+- Executa em paralelo com múltiplas réplicas.  
+- Obtém regras de um serviço externo, se necessário.  
+- Processa os dados para o formato exigido pelo DynamoDB.  
+
+### Próximo passo  
+- Relata sucesso/falha à fila do serviço de lotes.  
+- Se bem-sucedido, encaminha para a fila do processo de registro.  
+
+## Serviço de Registro  
+
+### Entrada  
+- Monitora a fila SQS de registro.  
+
+### Operação  
+- Executa em paralelo com múltiplas réplicas.  
+- Recupera os dados do DynamoDB, valida e os grava no sistema de armazenamento.  
+- Registra inconsistências para retorno posterior.  
+
+### Próximo passo  
+- Relata os resultados finais do processamento à fila do serviço de lotes.  
+
+
+## Coleta de Métricas  
+
+Cada serviço (Intermediário, Captura, Registro, Lotes) registra métricas relevantes em um banco de dados de séries temporais. Esse banco fornece um histórico das atividades do sistema, permitindo o monitoramento e a análise do desempenho.
+
+O **Amazon Timestream** é utilizado para armazenar métricas de tempo para todos os serviços do pipeline. Alternativamente, serviços não gerenciados como **Prometheus** podem ser usados.
+
+Métricas monitoradas incluem:  
+
+- Número de dívidas processadas.  
+- Número de falhas.  
+- Desempenho do processamento por cliente.  
