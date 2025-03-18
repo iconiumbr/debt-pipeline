@@ -92,12 +92,14 @@ A Fase de Entrada é responsável por receber, armazenar e registrar os dados en
 **Próximo passo:**  
 - Uma mensagem é enviada ao serviço de lotes para criação do lote e envio ao processo intermediário.
 
-## Serviço de Captura de Arquivos  
+## Fase de Processamento
 
-### Entrada  
+### Serviço de Captura de Arquivos 
+
+**Entrada**
 - Monitora a fila SQS do serviço de captura de arquivos.  
 
-### Operação  
+**Operação**
 - Executa em paralelo com múltiplas réplicas.  
 - Verifica arquivos corrompidos e informações do cliente.  
 - Divide arquivos grandes em sublotes, se necessário.  
@@ -106,29 +108,29 @@ A Fase de Entrada é responsável por receber, armazenar e registrar os dados en
 
 ## Serviço Intermediário  
 
-### Entrada  
+**Entrada**
 - Monitora a fila SQS intermediária.  
 
-### Operação  
+**Operação**
 - Executa em paralelo com múltiplas réplicas.  
 - Obtém regras de um serviço externo, se necessário.  
 - Processa os dados para o formato exigido pelo DynamoDB.  
 
-### Próximo passo  
+**Próximo passo**
 - Relata sucesso/falha à fila do serviço de lotes.  
 - Se bem-sucedido, encaminha para a fila do processo de registro.  
 
 ## Serviço de Registro  
 
-### Entrada  
+**Entrada**
 - Monitora a fila SQS de registro.  
 
-### Operação  
+**Operação**
 - Executa em paralelo com múltiplas réplicas.  
 - Recupera os dados do DynamoDB, valida e os grava no sistema de armazenamento.  
 - Registra inconsistências para retorno posterior.  
 
-### Próximo passo  
+**Próximo passo**
 - Relata os resultados finais do processamento à fila do serviço de lotes.  
 
 
