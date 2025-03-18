@@ -1,147 +1,146 @@
-# Sistema de Pipeline de Processamento de Dívidas  
+# Debt Processing Pipeline System
 
-O Sistema de Pipeline de Processamento de Dívidas é um sistema abrangente projetado para processar dados de dívida enviados por clientes por meio de vários métodos. O pipeline gerencia a submissão, armazenamento, transformação e processamento final dos dados para garantir que as informações da dívida sejam registradas e rastreadas com precisão do início ao fim, de forma assíncrona, permitindo que o operador do sistema dimensione os componentes do sistema de acordo com a demanda variável ao longo do dia.
+The Debt Processing Pipeline is a comprehensive system designed to process debt data submitted by clients through various methods. The pipeline handles data submission, storage, transformation, and final processing to ensure that the debt information is accurately recorded and tracked from start to finish, in an asynchronous way, allowing the system operator to scale up the components of the system to scale according to the variable demand through the day.
 
-## Justificativa  
-Esta empresa é um bureau de cobrança de dívidas.  
+## Reasoning
 
-Seus clientes são empresas que desejam cobrar dívidas vencidas de indivíduos que não efetuaram o pagamento voluntariamente. Os clientes enviam as informações de cobrança da dívida, que incluem detalhes básicos sobre o devedor do qual desejam cobrar, como nome, CPF (Cadastro de Pessoas Físicas), valor devido e data do vencimento não pago. Assim que a dívida é registrada no sistema do bureau de cobrança, as dívidas serão protestadas, o devedor será notificado e um desconto ou plano de parcelamento poderá ser negociado.
+This company is a debt collection bureau.
+Its clients are businesses that want to collect overdue debts from individuals that have not been paid voluntarily. The clients submit the debt collection information, which includes basic details about the debtor they wish to collect from, such as their name, CPF (individual taxpayer registry number), the amount owed, and the date the payment was missed. Once the debt is registered in the collection bureau's system, the debts will be protested, the debtor will be notified, and a discount or installment payment plan may be negotiated.
 
-## Escopo  
-Esta descrição do sistema não abordará a fase de cobrança da dívida, mas, para fins de delimitação deste escopo, será restrita apenas ao recebimento, processamento e armazenamento dos dados de dívida enviados pelos clientes ao bureau. A complexidade se deve à multiplicidade de formatos de dados e arquivos que os clientes podem utilizar, e como o sistema deve reagir para ingerir esses dados de maneira fluida e precisa, atendendo tanto pequenos quanto grandes clientes, garantindo precisão e agilidade.
+## Scope
 
-## Componentes do Sistema  
+This system description will not go through the phase of collecting the debt, but for the sake of limitation of this scope, will be restricted only to receiving, processing and storing debt data that the clients sent to the bureau. The complexity is due to the multitude of data and file formats that the clients can use, and how the system may react to smoothly and accurately ingest this data, from small to very big clients, that requires precision and swiftness.
 
-### Serviço de Lotes  
-O serviço de lotes é utilizado para rastrear e manter o status das solicitações de dados de dívida que os clientes enviam ao bureau.
+## System Components
 
-### Serviços de Entrada  
-Utilizados como serviços de borda, esses componentes são expostos ao cliente para coletar, de forma passiva ou ativa, os dados de dívida. Esses serviços respondem de maneira síncrona, recebendo a entrada e armazenando os dados brutos para processamento intermediário.
+### Batch Service
 
-### Processo de Captura de Arquivos  
-No caso de arquivos entregues via FTP, um evento na notificação S3 será acionado para a SQS. Em seguida, o processo de captura de arquivos verificará o arquivo, identificará os detalhes do cliente e, a partir daí, poderá dividir um arquivo grande em vários sublotes ou registrar um único lote para o processo intermediário.
+The batch service is used to track and maintain the status of the input debt data requests that the clients send to the bureau.
 
-### Processo Intermediário  
-Este serviço processa os dados brutos coletados por diversas fontes na fase de entrada, realiza ETL, prepara os dados e os injeta em um banco DynamoDB que será utilizado para o processo de registro.
+### Input Services
 
-### Processo de Registro  
-Extrai os dados do armazenamento temporário no DynamoDB, processa esses dados de acordo com diversas validações exigidas e os insere no sistema de armazenamento de dívidas.
+Used as border services, those components are exposed to the client to collect, either passively or actively, the debt data. These services answer synchronously, taking input and storing the raw data for intermediate processing.
 
-### Broker de Mensagens  
-Para este modelo, utilizamos o Amazon SNS para retransmissão básica de mensagens entre processos, sinalizando para diferentes componentes, como o serviço de lotes, que há um novo arquivo a ser processado pelo sistema intermediário, ou que o serviço de lotes precisa atualizar o status do lote.
+### File Picker Process
 
-### Monitoramento  
-Todos os processos emitem métricas de séries temporais para o AWS Timestream para análise posterior.
+In case of files delivered to FTP, it will prompt an event in S3 notification to SQS. Then the file picker process will check the file, check client details and from there it will either break down a large file into multiple sub-batches or register a single batch for the intermediate process.
 
-## Serviço de Processamento de Lotes  
+### Intermediate Process
 
-O Serviço de Processamento de Lotes é responsável por gerenciar o status das submissões dos clientes e rastrear seu progresso nas várias etapas do pipeline de processamento de dívidas. Este serviço garante que os dados sejam tratados, processados e armazenados corretamente no sistema.
+This service does the processing of the raw data, gathered by several sources in the input phase, does ETL work, prepares the data and injects it into a DynamoDB that will be used for the registering process.
 
-### Responsabilidades Principais do Serviço de Processamento de Lotes  
+### Registering Process
 
-#### Criação de Lotes  
-- Invocado por uma chamada síncrona das etapas de entrada, contém informações básicas de processamento do lote, incluindo status, localização do arquivo, identificação do cliente, número do lote, número de dívidas recebidas, processadas e falhas.  
-- Assim que um lote é criado, uma mensagem é enviada para a fila do processo intermediário.
+Takes data from the DynamoDB temporary storage, processes this data according to several required validations and inputs the final debt data into the debt storage system.
 
-#### Rastreamento e Atualizações de Status  
-- O Serviço de Processamento de Lotes mantém o status do lote ao longo de todo o pipeline.
+### Message Broker
 
-#### Conclusão do Lote  
-- Após a conclusão do processo de registro, o status do lote é finalizado e atualizado.  
-- O lote enviará mensagens para o destino que precisa ser notificado sobre os resultados, seja por SES para e-mail ou Event Bridge para webhook ou outros métodos.
+For this model, we use Amazon SNS for basic relaying of inter-process messaging, signaling to different components like the batch service that there is a new file to be processed by the intermediate system, or that the batch service needs to update the batch status.
 
-#### Notificação de Falha  
-- Em caso de falha no processamento da entrada, como formato inválido, assim que a mensagem for recebida pelo serviço, esta será enviada ao cliente por meio do SES ou Event Bridge.
+### Monitoring
 
-## Fase de Entrada  
+All processes emit time series metrics to AWS Timestream for further analysis.
 
-A Fase de Entrada é responsável por receber, armazenar e registrar os dados enviados pelos clientes em diferentes formatos. Os clientes podem submeter dados por upload de arquivos ou por meio de requisições REST individuais.
+## Batch Processing Service
 
-### 1 - Submissão de Dados via REST API usando Formato Padrão  
-**Público-alvo:** Para clientes que desejam utilizar o formato padrão, sejam eles pequenos ou grandes.  
-**Requisitos:** Os dados devem estar em um formato definido.  
-**Operação:**  
-- O cliente enviará várias linhas de dívida via chamadas REST.  
-- Os dados são gravados em um banco de dados NoSQL temporário.  
-- Após a finalização, o cliente invocará uma solicitação de submissão e os dados serão gravados em um CSV no S3.  
-**Próximo passo:**  
-- Uma mensagem é enviada ao serviço de lotes para criar o lote e posteriormente enviá-lo para a fila do processo intermediário.
+The Batch Processing Service is responsible for managing the status of client submissions and tracking their progress through the various stages of the debt processing pipeline. This service ensures that data is correctly handled, processed, and stored in the system.
 
-### 2 - Submissão de Dados via REST API para CSV  
-**Público-alvo:** Para clientes que desejam utilizar o formato padrão, sejam eles pequenos ou grandes.  
-**Requisitos:** Os dados devem estar em um formato definido.  
-**Operação:**  
-- O cliente enviará um único arquivo CSV via chamada REST.  
-- O CSV é armazenado no S3.  
-**Próximo passo:**  
-- Uma mensagem é enviada ao serviço de lotes para criar o lote e enviá-lo ao processo intermediário.
+### Key Responsibilities of the Batch Processing Service
 
-### 3 - Submissão de Arquivos via FTP  
-**Público-alvo:** Para clientes que enviam arquivos de tamanho variável.  
-**Operação:**  
-- Os clientes enviam arquivos para o S3 via FTP em diversos formatos, seja padrão ou personalizado.  
-**Próximo passo:**  
-- A notificação de evento S3 envia uma mensagem para a fila SQS do serviço de captura de arquivos.
+#### Batch Creation
 
-### 4 – Formato Personalizado para Pequenos Clientes  
-**Público-alvo:** Pequenos clientes com poucas dívidas.  
-**Operação:**  
-- O cliente faz o upload de um arquivo (CSV, TXT, XLS) via portal web.  
-- As primeiras 100 colunas são analisadas, e o usuário mapeia os campos.  
-- O arquivo é gravado no S3.  
-**Próximo passo:**  
-- Uma mensagem é enviada ao serviço de lotes para criação do lote e envio ao processo intermediário.
+- Invoked by a sync call from the input stages, contains basic batch processing info including status, file location, client identification, batch number, number of debts received, processed and failed.
+- Once a batch is created, a message is dispatched to the intermediate process queue.
 
-## Fase de Processamento
+#### Tracking and Status Updates
 
-### Serviço de Captura de Arquivos 
+- The Batch Processing Service maintains the status of the batch throughout the entire pipeline.
 
-**Entrada**
-- Monitora a fila SQS do serviço de captura de arquivos.  
+#### Completion of Batch
 
-**Operação**
-- Executa em paralelo com múltiplas réplicas.  
-- Verifica arquivos corrompidos e informações do cliente.  
-- Divide arquivos grandes em sublotes, se necessário.  
-**Próximo passo:**  
-- Envia mensagens para o serviço de lotes e para a fila do processo intermediário.  
+- Once the registering process is completed, the batch status is finished and updated back to the batch.
+- The batch will dispatch messages to the destination that needs to be notified about the results, either through SES for email or Event Bridge for further webhook or other methods.
 
-## Serviço Intermediário  
+#### Failure Notification
 
-**Entrada**
-- Monitora a fila SQS intermediária.  
+- In case of failure during processing of the input, such as bad format, once the message is received by the service, it will dispatch to the client through SES or Event Bridge.
 
-**Operação**
-- Executa em paralelo com múltiplas réplicas.  
-- Obtém regras de um serviço externo, se necessário.  
-- Processa os dados para o formato exigido pelo DynamoDB.  
+## Input Phase
 
-**Próximo passo**
-- Relata sucesso/falha à fila do serviço de lotes.  
-- Se bem-sucedido, encaminha para a fila do processo de registro.  
+The Input Phase is responsible for receiving, storing, and registering incoming data from clients in different formats. Clients can submit data via file uploads or through individual REST insert requests. Once the data is submitted, it undergoes processing to transform it into a format suitable for further steps in the debt processing pipeline.
 
-## Serviço de Registro  
+### 1 - Data Submission via REST API using Default Format
 
-**Entrada**
-- Monitora a fila SQS de registro.  
+**Target:**
+- For clients willing to use the default format either big or small clients.
 
-**Operação**
-- Executa em paralelo com múltiplas réplicas.  
-- Recupera os dados do DynamoDB, valida e os grava no sistema de armazenamento.  
-- Registra inconsistências para retorno posterior.  
+**Requires:**
+- Data to be in a defined format.
 
-**Próximo passo**
-- Relata os resultados finais do processamento à fila do serviço de lotes.  
+**Operation:**
+- Client will input several debt lines via REST calls.
+- Data is recorded in a temporary NoSQL DB.
+- Upon finish, client will invoke submit request. Then data is written down to S3 CSV default format.
 
+**Next Step:**
+- Message is sent to batch service to create batch and further send message to the intermediate process queue.
 
-## Coleta de Métricas  
+### 2 - Data Submission via REST API for CSV using Default Format
 
-Cada serviço (Intermediário, Captura, Registro, Lotes) registra métricas relevantes em um banco de dados de séries temporais. Esse banco fornece um histórico das atividades do sistema, permitindo o monitoramento e a análise do desempenho.
+**Target:**
+- For clients willing to use the default format either big or small clients.
 
-O **Amazon Timestream** é utilizado para armazenar métricas de tempo para todos os serviços do pipeline. Alternativamente, serviços não gerenciados como **Prometheus** podem ser usados.
+**Requires:**
+- Data to be in a defined format.
 
-Métricas monitoradas incluem:  
+**Operation:**
+- Client will input a single CSV using a REST call.
+- CSV is stored in S3.
 
-- Número de dívidas processadas.  
-- Número de falhas.  
-- Desempenho do processamento por cliente.  
+**Next Step:**
+- Message is sent to batch service to create batch and further send message to the intermediate process queue.
+
+## Processing Phase
+
+### 1 - File Picker Service
+
+**Input:**
+- The file picker monitors the SQS file picker queue.
+
+**Operation:**
+- Runs in parallel with multiple replicas.
+- Once a message comes through, it will locate the file in S3.
+- Assess who is the client, and if the file is not corrupted.
+- Check if the file is big enough that demands it to be broken or maintain a single batch.
+- If needed, break down smaller files and write down to S3.
+- Identify the client processing type (default format, custom format by code).
+
+**Next Step:**
+- Message is sent to batch service to create batch and further send message to the intermediate process queue, as a single or multiple sub-batches.
+
+### 2 - Intermediate Service
+
+**Input:**
+- The file picker monitors the SQS intermediate queue.
+
+**Operation:**
+- Runs in parallel with multiple replicas.
+- Assesses the file exists and is correct.
+- Checks from the Queue the file format to be processed.
+- May need to fetch rules from external service to know how to process the file.
+- Process the data into DynamoDB format expected by the registering process.
+
+**Next Step:**
+- Send message to the Batch service SQS queue reporting changes in the batch.
+- If successful, send message to the registering process SQS queue to process the final request.
+- If unsuccessful, send message to the batch service SQS queue informing of the failure on the file processing (format, corruption, etc.).
+
+## Metrics Collection
+
+Each service logs relevant metrics to a Time Series Database. This database provides a historical record of system activity, allowing for the monitoring and analysis of system performance.
+
+Metrics tracked include:
+- Number of lines processed per client.
+- Number of failures.
+- Number of debts processed during each injection run.
+- Number of rejections.
