@@ -1,3 +1,5 @@
+[Versão em Português (pt-BR)](ptbr.MD)
+
 # Debt Processing Pipeline System
 
 The Debt Processing Pipeline is a comprehensive system designed to process debt data submitted by clients through various methods. The pipeline handles data submission, storage, transformation, and final processing to ensure that the debt information is accurately recorded and tracked from start to finish, in an asynchronous way, allowing the system operator to scale up the components of the system to scale according to the variable demand through the day.
