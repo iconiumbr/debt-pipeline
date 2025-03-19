@@ -1,7 +1,4 @@
----
-config:
-  layout: fixed
----
+```mermaid
 flowchart TD
     A["Client Submission"] -- REST API --> B1["Default Format REST"] & B2["CSV REST Upload"]
     A -- FTP Upload --> B3["File Submission via FTP"]
@@ -27,4 +24,4 @@ flowchart TD
     B4 -- Store in S3 --> C2
     B2 -- Create batch --> D
     B4 -- Create batch --> D
-    L@{ shape: db}
+    L
