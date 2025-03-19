@@ -2,6 +2,10 @@
 - [Diagram SVG online](https://www.mermaidchart.com/raw/4182fac9-565c-4374-b955-4b713c8e491d?theme=light&version=v0.1&format=svg)
 - [Board](https://www.mermaidchart.com/app/projects/3d9096ff-1737-4dac-80ac-3dad708298c2/diagrams/4182fac9-565c-4374-b955-4b713c8e491d/version/v0.1/edit)
 
+## Diagram
+
+![Diagram](graph.svg)
+
 # Debt Processing Pipeline System
 
 The Debt Processing Pipeline is a comprehensive system designed to process debt data submitted by clients through various methods. The pipeline handles data submission, storage, transformation, and final processing to ensure that the debt information is accurately recorded and tracked from start to finish, in an asynchronous way, allowing the system operator to scale up the components of the system to scale according to the variable demand through the day.
@@ -212,6 +216,3 @@ The processing phase processes the input into the final destination.
 - Amazon Timestream is used to store time-based metrics for all services in the pipeline. Alternatively, unmanaged services like Prometheus can be used.
 - Metrics tracked include the number of lines processed per client, the number of failures, the number of debts processed during each injection run, and the number of rejections.
 
-## Diagram
-
-![Diagram](graph.svg)

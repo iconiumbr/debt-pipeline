@@ -1,3 +1,11 @@
+- [English](readme.MD)
+- [Diagram SVG online](https://www.mermaidchart.com/raw/4182fac9-565c-4374-b955-4b713c8e491d?theme=light&version=v0.1&format=svg)
+- [Board](https://www.mermaidchart.com/app/projects/3d9096ff-1737-4dac-80ac-3dad708298c2/diagrams/4182fac9-565c-4374-b955-4b713c8e491d/version/v0.1/edit)
+
+## Diagram
+
+![Diagram](graph.svg)
+
 # Sistema de Pipeline de Processamento de Dívidas
 
 O Pipeline de Processamento de Dívidas é um sistema abrangente projetado para processar dados de dívidas enviados por clientes por meio de vários métodos. O pipeline lida com o envio, armazenamento, transformação e processamento final dos dados para garantir que as informações sobre as dívidas sejam registradas e rastreadas com precisão do início ao fim, de forma assíncrona, permitindo que o operador do sistema escale os componentes do sistema de acordo com a demanda variável ao longo do dia.
