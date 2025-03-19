@@ -1,7 +1,6 @@
 - [Versão em Português (pt-BR)](ptbr.MD)
 - [Diagram SVG online](https://www.mermaidchart.com/raw/4182fac9-565c-4374-b955-4b713c8e491d?theme=light&version=v0.1&format=svg)
-- [Diagram SVG](graph.svg)
-- [Board] (https://www.mermaidchart.com/app/projects/3d9096ff-1737-4dac-80ac-3dad708298c2/diagrams/4182fac9-565c-4374-b955-4b713c8e491d/version/v0.1/edit)
+- [Board](https://www.mermaidchart.com/app/projects/3d9096ff-1737-4dac-80ac-3dad708298c2/diagrams/4182fac9-565c-4374-b955-4b713c8e491d/version/v0.1/edit)
 
 # Debt Processing Pipeline System
 
@@ -212,3 +211,7 @@ The processing phase processes the input into the final destination.
 - Each service (Intermediate, picker, registering, batch) logs relevant metrics to a Time Series Database. This database provides a historical record of system activity, allowing for the monitoring and analysis of system performance.
 - Amazon Timestream is used to store time-based metrics for all services in the pipeline. Alternatively, unmanaged services like Prometheus can be used.
 - Metrics tracked include the number of lines processed per client, the number of failures, the number of debts processed during each injection run, and the number of rejections.
+
+## Diagram
+
+![Diagram](graph.svg)
