@@ -1,6 +1,7 @@
-[Versão em Português (pt-BR)](ptbr.MD)
-[Diagram SVG online](https://www.mermaidchart.com/raw/4182fac9-565c-4374-b955-4b713c8e491d?theme=light&version=v0.1&format=svg)
-[Diagram SVG](graph.svg)
+- [Versão em Português (pt-BR)](ptbr.MD)
+- [Diagram SVG online](https://www.mermaidchart.com/raw/4182fac9-565c-4374-b955-4b713c8e491d?theme=light&version=v0.1&format=svg)
+- [Diagram SVG](graph.svg)
+- [Board] (https://www.mermaidchart.com/app/projects/3d9096ff-1737-4dac-80ac-3dad708298c2/diagrams/4182fac9-565c-4374-b955-4b713c8e491d/version/v0.1/edit)
 
 # Debt Processing Pipeline System
 
